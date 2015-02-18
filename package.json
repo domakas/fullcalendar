@@ -1,9 +1,9 @@
 {
-  "name": "fullcalendar",
-  "version": "2.2.7",
+  "name": "fullcalendar-domakas",
+  "version": "2.2.8",
   "repository": {
     "type": "git",
-    "url": "https://github.com/arshaw/fullcalendar.git"
+    "url": "https://github.com/domakas/fullcalendar.git"
   },
   "devDependencies": {
     "underscore": "^1.4.4",
