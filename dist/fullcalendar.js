@@ -1,5 +1,5 @@
 /*!
- * FullCalendar v2.2.7
+ * FullCalendar v2.2.8
  * Docs & License: http://arshaw.com/fullcalendar/
  * (c) 2013 Adam Shaw
  */
@@ -128,7 +128,7 @@ var rtlDefaults = {
 
 ;;
 
-var fc = $.fullCalendar = { version: "2.2.7" };
+var fc = $.fullCalendar = { version: "2.2.8" };
 var fcViews = fc.views = {};
 
 
@@ -709,6 +709,22 @@ function createObject(proto) {
 function copyOwnProps(src, dest) {
 	for (var name in src) {
 		if (hasOwnProp(src, name)) {
+			dest[name] = src[name];
+		}
+	}
+}
+
+
+// Copies over certain methods with the same names as Object.prototype methods. Overcomes an IE<=8 bug:
+// https://developer.mozilla.org/en-US/docs/ECMAScript_DontEnum_attribute#JScript_DontEnum_Bug
+function copyNativeMethods(src, dest) {
+	var names = [ 'constructor', 'toString', 'valueOf' ];
+	var i, name;
+
+	for (i = 0; i < names.length; i++) {
+		name = names[i];
+
+		if (src[name] !== Object.prototype[name]) {
 			dest[name] = src[name];
 		}
 	}
@@ -1550,6 +1566,7 @@ Class.extend = function(members) {
 
 	// copy each member variable/method onto the the subclass's prototype
 	copyOwnProps(members, subClass.prototype);
+	copyNativeMethods(members, subClass.prototype); // hack for IE8
 
 	// copy over all class variables/methods to the subclass, such as `extend` and `mixin`
 	copyOwnProps(superClass, subClass);
@@ -3848,6 +3865,7 @@ Grid.mixin({
 
 	// Converts an array of event objects into an array of event segment objects.
 	// A custom `rangeToSegsFunc` may be given for arbitrarily slicing up events.
+	// Doesn't guarantee an order for the resulting array.
 	eventsToSegs: function(events, rangeToSegsFunc) {
 		var eventRanges = this.eventsToRanges(events);
 		var segs = [];
@@ -3868,6 +3886,7 @@ Grid.mixin({
 	// A "range" object is a plain object with start/end properties denoting the time it covers. Also an event property.
 	// For "normal" events, this will be identical to the event's start/end, but for "inverse-background" events,
 	// will create an array of ranges that span the time *not* covered by the given event.
+	// Doesn't guarantee an order for the resulting array.
 	eventsToRanges: function(events) {
 		var _this = this;
 		var eventsById = groupEventsById(events);
@@ -4672,7 +4691,7 @@ DayGrid.mixin({
 			'<span class="fc-title">' +
 				(htmlEscape(event.title || '') || '&nbsp;') + // we always want one line of height
 			'</span>';
-		
+
 		return '<a class="' + classes.join(' ') + '"' +
 				(event.url ?
 					' href="' + htmlEscape(event.url) + '"' :
@@ -4794,8 +4813,8 @@ DayGrid.mixin({
 
 		// Give preference to elements with certain criteria, so they have
 		// a chance to be closer to the top.
-		segs.sort(compareSegs);
-		
+		segs.sort(fc.compareSegs);
+
 		for (i = 0; i < segs.length; i++) {
 			seg = segs[i];
 
@@ -5175,13 +5194,18 @@ DayGrid.mixin({
 		var dayRange = { start: dayStart, end: dayEnd };
 
 		// slice the events with a custom slicing function
-		return this.eventsToSegs(
+		segs = this.eventsToSegs(
 			events,
 			function(range) {
 				var seg = intersectionToSeg(range, dayRange); // undefind if no intersection
 				return seg ? [ seg ] : []; // must return an array of segments
 			}
 		);
+
+		// force an order because eventsToSegs doesn't guarantee one
+		segs.sort(compareSegs);
+
+		return segs;
 	},
 
 
@@ -5969,7 +5993,7 @@ function placeSlotSegs(segs) {
 	var level0;
 	var i;
 
-	segs.sort(compareSegs); // order by date
+	segs.sort(fc.compareSegs); // order by date
 	levels = buildSlotSegLevels(segs);
 	computeForwardSlotSegs(levels);
 
@@ -6134,7 +6158,7 @@ function compareForwardSlotSegs(seg1, seg2) {
 		// put segments that are closer to initial edge first (and favor ones with no coords yet)
 		(seg1.backwardCoord || 0) - (seg2.backwardCoord || 0) ||
 		// do normal sorting...
-		compareSegs(seg1, seg2);
+		fc.compareSegs(seg1, seg2);
 }
 
 ;;
